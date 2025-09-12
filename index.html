@@ -35,7 +35,7 @@ legend { font-weight:bold; color:#0A2342; padding:0 10px; }
 <input type="text" id="cliente">
 
 <label>E-mail do Cliente:</label>
-<input type="email" id="email_cliente" placeholder="cliente@exemplo.com">
+<input type="email" id="email_cliente" placeholder="cliente@exemplo.com" required>
 
 <label>Equipamento/Fabricante/Modelo/Nº Série:</label>
 <textarea id="equipamento"></textarea>
@@ -122,7 +122,6 @@ function sendFormSubmit(){
     form.method="POST";
     form.action=`https://formsubmit.co/${emailCliente}`;
 
-    // Campos de texto
     const fields = ["cliente","equipamento","obs_inspecao","acessorios","defeitos","observacoes"];
     fields.forEach(id=>{
         const input = document.createElement("input");
@@ -132,7 +131,6 @@ function sendFormSubmit(){
         form.appendChild(input);
     });
 
-    // Campos radio
     const radios = ["danificado","faltapecas","status","tipo"];
     radios.forEach(name=>{
         const val = document.querySelector(`input[name="${name}"]:checked`)?.value || "-";
@@ -143,7 +141,6 @@ function sendFormSubmit(){
         form.appendChild(input);
     });
 
-    // Assinaturas como imagem HTML
     if(!padClient.isEmpty()){
         const imgClient = padClient.toDataURL();
         const input = document.createElement("input");
@@ -161,7 +158,6 @@ function sendFormSubmit(){
         form.appendChild(input);
     }
 
-    // Assunto dinâmico
     const cliente = document.getElementById("cliente").value || "SemCliente";
     const tipo = document.querySelector('input[name="tipo"]:checked')?.value || "Registro";
     const hoje = new Date().toLocaleDateString("pt-BR");
@@ -173,14 +169,12 @@ function sendFormSubmit(){
     inputSubject.value=assunto;
     form.appendChild(inputSubject);
 
-    // Cópia para Vinicius
     const inputCC = document.createElement("input");
     inputCC.type="hidden";
     inputCC.name="_cc";
     inputCC.value="vinicius.germano@supportcare.com.br";
     form.appendChild(inputCC);
 
-    // Template HTML para renderizar imagens
     const inputTemplate = document.createElement("input");
     inputTemplate.type="hidden";
     inputTemplate.name="_template";
