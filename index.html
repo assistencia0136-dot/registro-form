@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registro Coleta e Entrega</title>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 <style>
 body { font-family: Arial,sans-serif; padding:10px; background:#f5f6fa; max-width:800px; margin:0 auto; }
@@ -35,6 +33,9 @@ legend { font-weight:bold; color:#0A2342; padding:0 10px; }
 
 <label>Cliente:</label>
 <input type="text" id="cliente">
+
+<label>E-mail do Cliente:</label>
+<input type="email" id="email_cliente" placeholder="cliente@exemplo.com">
 
 <label>Equipamento/Fabricante/Modelo/Nº Série:</label>
 <textarea id="equipamento"></textarea>
@@ -87,7 +88,6 @@ legend { font-weight:bold; color:#0A2342; padding:0 10px; }
 <canvas id="signature-staff" class="signature-box"></canvas>
 <button type="button" onclick="clearSignature('staff')">Limpar Assinatura</button>
 
-<button type="button" onclick="generatePDF()">Gerar PDF</button>
 <button type="button" onclick="sendFormSubmit()">Enviar por E-mail</button>
 </div>
 
@@ -114,64 +114,13 @@ window.addEventListener('resize', function(){
 });
 function clearSignature(type){ if(type==='client') padClient.clear(); if(type==='staff') padStaff.clear(); }
 
-// Gerar PDF (opcional)
-function generatePDF(){
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p','mm','a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
-    const maxWidth = pageWidth - 2*margin;
-    let y = 20;
-    function addText(text,x,y,maxWidth,fontsize=10){
-        doc.setFontSize(fontsize);
-        const lines = doc.splitTextToSize(text,maxWidth);
-        doc.text(lines,x,y);
-        return lines.length*(fontsize/3);
-    }
-    function addSection(title,value){
-        doc.setFontSize(11);
-        doc.setFillColor(0,102,60);
-        doc.setTextColor(255,255,255);
-        doc.rect(margin,y,maxWidth,6,'F');
-        doc.text(title,margin+2,y+4);
-        y+=8;
-        doc.setFillColor(240,240,240);
-        doc.setTextColor(0,0,0);
-        const textHeight = addText(value,margin+2,y,maxWidth-4);
-        doc.rect(margin,y,maxWidth,textHeight+4,'S');
-        y+=textHeight+6;
-    }
-    addSection("Cliente",document.getElementById("cliente").value);
-    addSection("Equipamento",document.getElementById("equipamento").value);
-    addSection("Observações",document.getElementById("obs_inspecao").value);
-    addSection("Acessórios",document.getElementById("acessorios").value);
-    addSection("Defeitos",document.getElementById("defeitos").value);
-    addSection("Observações Gerais",document.getElementById("observacoes").value);
-
-    if(!padClient.isEmpty()){
-        const imgClient = padClient.toDataURL();
-        doc.text("Assinatura do Cliente:",15,y);
-        doc.addImage(imgClient,"PNG",15,y+5,80,25);
-        y+=35;
-    }
-    if(!padStaff.isEmpty()){
-        const imgStaff = padStaff.toDataURL();
-        doc.text("Assinatura do Funcionário:",15,y);
-        doc.addImage(imgStaff,"PNG",15,y+5,80,25);
-        y+=35;
-    }
-
-    const cliente = document.getElementById("cliente").value || "SemCliente";
-    const tipo = document.querySelector('input[name="tipo"]:checked')?.value || "Registro";
-    const hoje = new Date().toISOString().slice(0,10);
-    doc.save(`${tipo}_${hoje}_${cliente}.pdf`.replace(/ /g,"_"));
-}
-
-// Enviar formulário via Formsubmit com assinaturas como imagem e CC
 function sendFormSubmit(){
+    const emailCliente = document.getElementById("email_cliente").value;
+    if(!emailCliente){ alert("Por favor, digite o e-mail do cliente."); return; }
+
     const form = document.createElement("form");
     form.method="POST";
-    form.action="https://formsubmit.co/seuemail@dominio.com"; // substitua pelo seu email real
+    form.action=`https://formsubmit.co/${emailCliente}`;
 
     // Campos de texto
     const fields = ["cliente","equipamento","obs_inspecao","acessorios","defeitos","observacoes"];
