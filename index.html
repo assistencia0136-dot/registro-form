@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro Coleta e Entrega</title>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<style>
+body { font-family: Arial,sans-serif; padding:10px; background:#f5f6fa; max-width:800px; margin:0 auto; }
+label { font-weight:bold; display:block; margin-top:10px; }
+input,textarea { width:100%; padding:8px; margin-top:5px; border-radius:5px; border:1px solid #ccc; box-sizing:border-box; }
+textarea { resize:none; height:80px; }
+.signature-box { border:1px solid #ccc; height:120px; border-radius:5px; margin-top:10px; background:white; width:100%; }
+button { margin-top:15px; padding:12px 20px; border:none; border-radius:5px; background:#0A2342; color:white; cursor:pointer; font-weight:bold; width:100%; }
+button:hover { background:#006B3C; }
+.field-group { margin-top:10px; display:flex; flex-wrap:wrap; gap:15px; }
+.field-group label { font-weight:normal; display:flex; align-items:center; margin-right:10px; white-space:nowrap; }
+.field-group label input[type="radio"], .field-group label input[type="checkbox"] { width:auto; margin-right:8px; margin-top:0; }
+fieldset { margin-top:20px; border-radius:5px; border:1px solid #ccc; padding:15px; }
+legend { font-weight:bold; color:#0A2342; padding:0 10px; }
+.form-container { background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+.header { text-align:center; margin-bottom:20px; padding-bottom:15px; border-bottom:2px solid #0A2342; }
+@media (max-width:600px) { body { padding:5px; } .form-container { padding:15px; } textarea { height:60px; } .field-group { gap:10px; } }
+</style>
+</head>
+<body>
+<div class="form-container">
+<div class="header">
+<h2 style="color:#0A2342; margin-bottom:5px;">SUPPORTCARE TECNOLOGIA HOSPITALAR</h2>
+<h3 style="color:#0A2342; margin-top:5px;">REGISTRO DE COLETA E ENTREGA DIGITAL</h3>
+<div id="datetime" style="text-align:right; font-size:12px; color:#006B3C; margin-top:10px;"></div>
+</div>
+
+<label>Cliente:</label>
+<input type="text" id="cliente">
+
+<label>Equipamento/Fabricante/Modelo/Nº Série:</label>
+<textarea id="equipamento"></textarea>
+
+<fieldset>
+<legend>Inspeção Visual</legend>
+<div class="field-group">
+<label>Danificado?</label>
+<label><input type="radio" name="danificado" value="Sim"> Sim</label>
+<label><input type="radio" name="danificado" value="Não"> Não</label>
+</div>
+<div class="field-group">
+<label>Falta peças?</label>
+<label><input type="radio" name="faltapecas" value="Sim"> Sim</label>
+<label><input type="radio" name="faltapecas" value="Não"> Não</label>
+</div>
+<label>Observações:</label>
+<textarea id="obs_inspecao"></textarea>
+</fieldset>
+
+<label>Acessórios:</label>
+<textarea id="acessorios"></textarea>
+
+<label>Defeitos relatados pelo cliente:</label>
+<textarea id="defeitos"></textarea>
+
+<label>Observações gerais:</label>
+<textarea id="observacoes"></textarea>
+
+<div class="field-group">
+<label>Status do equipamento:</label>
+<label><input type="radio" name="status" value="Garantia de Venda"> Garantia de Venda</label>
+<label><input type="radio" name="status" value="Garantia de Serviço"> Garantia de Serviço</label>
+<label><input type="radio" name="status" value="Fora de Garantia"> Fora de Garantia</label>
+<label><input type="radio" name="status" value="Não Sabe Informar"> Não sabe informar</label>
+<label><input type="radio" name="status" value="Empréstimo"> Empréstimo</label>
+</div>
+
+<div class="field-group">
+<label>Tipo:</label>
+<label><input type="radio" name="tipo" value="Coleta"> Coleta</label>
+<label><input type="radio" name="tipo" value="Entrega"> Entrega</label>
+</div>
+
+<h4>Assinatura Cliente</h4>
+<canvas id="signature-client" class="signature-box"></canvas>
+<button type="button" onclick="clearSignature('client')">Limpar Assinatura</button>
+
+<h4>Assinatura Funcionário</h4>
+<canvas id="signature-staff" class="signature-box"></canvas>
+<button type="button" onclick="clearSignature('staff')">Limpar Assinatura</button>
+
+<button type="button" onclick="generatePDF()">Gerar PDF</button>
+<button type="button" onclick="sendFormSubmit()">Enviar por E-mail</button>
+</div>
+
+<script>
+document.getElementById("datetime").textContent = "Data/Hora: " + new Date().toLocaleString("pt-BR");
+
+function setupSignatureCanvas(canvasId){
+    const canvas = document.getElementById(canvasId);
+    const signaturePad = new SignaturePad(canvas);
+    const ratio = Math.max(window.devicePixelRatio||1,1);
+    canvas.width = canvas.offsetWidth*ratio;
+    canvas.height = canvas.offsetHeight*ratio;
+    canvas.getContext("2d").scale(ratio,ratio);
+    signaturePad.clear();
+    return signaturePad;
+}
+
+const padClient = setupSignatureCanvas('signature-client');
+const padStaff = setupSignatureCanvas('signature-staff');
+window.addEventListener('resize', function(){
+    padClient.clear(); padStaff.clear();
+    setupSignatureCanvas('signature-client');
+    setupSignatureCanvas('signature-staff');
+});
+function clearSignature(type){ if(type==='client') padClient.clear(); if(type==='staff') padStaff.clear(); }
+
+// Gerar PDF (opcional)
+function generatePDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p','mm','a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const maxWidth = pageWidth - 2*margin;
+    let y = 20;
+    function addText(text,x,y,maxWidth,fontsize=10){
+        doc.setFontSize(fontsize);
+        const lines = doc.splitTextToSize(text,maxWidth);
+        doc.text(lines,x,y);
+        return lines.length*(fontsize/3);
+    }
+    function addSection(title,value){
+        doc.setFontSize(11);
+        doc.setFillColor(0,102,60);
+        doc.setTextColor(255,255,255);
+        doc.rect(margin,y,maxWidth,6,'F');
+        doc.text(title,margin+2,y+4);
+        y+=8;
+        doc.setFillColor(240,240,240);
+        doc.setTextColor(0,0,0);
+        const textHeight = addText(value,margin+2,y,maxWidth-4);
+        doc.rect(margin,y,maxWidth,textHeight+4,'S');
+        y+=textHeight+6;
+    }
+    addSection("Cliente",document.getElementById("cliente").value);
+    addSection("Equipamento",document.getElementById("equipamento").value);
+    addSection("Observações",document.getElementById("obs_inspecao").value);
+    addSection("Acessórios",document.getElementById("acessorios").value);
+    addSection("Defeitos",document.getElementById("defeitos").value);
+    addSection("Observações Gerais",document.getElementById("observacoes").value);
+
+    if(!padClient.isEmpty()){
+        const imgClient = padClient.toDataURL();
+        doc.text("Assinatura do Cliente:",15,y);
+        doc.addImage(imgClient,"PNG",15,y+5,80,25);
+        y+=35;
+    }
+    if(!padStaff.isEmpty()){
+        const imgStaff = padStaff.toDataURL();
+        doc.text("Assinatura do Funcionário:",15,y);
+        doc.addImage(imgStaff,"PNG",15,y+5,80,25);
+        y+=35;
+    }
+
+    const cliente = document.getElementById("cliente").value || "SemCliente";
+    const tipo = document.querySelector('input[name="tipo"]:checked')?.value || "Registro";
+    const hoje = new Date().toISOString().slice(0,10);
+    doc.save(`${tipo}_${hoje}_${cliente}.pdf`.replace(/ /g,"_"));
+}
+
+// Enviar formulário via Formsubmit com assinaturas como imagem e CC
+function sendFormSubmit(){
+    const form = document.createElement("form");
+    form.method="POST";
+    form.action="https://formsubmit.co/seuemail@dominio.com"; // substitua pelo seu email real
+
+    // Campos de texto
+    const fields = ["cliente","equipamento","obs_inspecao","acessorios","defeitos","observacoes"];
+    fields.forEach(id=>{
+        const input = document.createElement("input");
+        input.type="hidden";
+        input.name=id;
+        input.value=document.getElementById(id).value;
+        form.appendChild(input);
+    });
+
+    // Campos radio
+    const radios = ["danificado","faltapecas","status","tipo"];
+    radios.forEach(name=>{
+        const val = document.querySelector(`input[name="${name}"]:checked`)?.value || "-";
+        const input = document.createElement("input");
+        input.type="hidden";
+        input.name=name;
+        input.value=val;
+        form.appendChild(input);
+    });
+
+    // Assinaturas como imagem HTML
+    if(!padClient.isEmpty()){
+        const imgClient = padClient.toDataURL();
+        const input = document.createElement("input");
+        input.type="hidden";
+        input.name="assinatura_cliente";
+        input.value=`<p>Assinatura do Cliente:</p><img src="${imgClient}" style="width:200px;height:auto;">`;
+        form.appendChild(input);
+    }
+    if(!padStaff.isEmpty()){
+        const imgStaff = padStaff.toDataURL();
+        const input = document.createElement("input");
+        input.type="hidden";
+        input.name="assinatura_funcionario";
+        input.value=`<p>Assinatura do Funcionário:</p><img src="${imgStaff}" style="width:200px;height:auto;">`;
+        form.appendChild(input);
+    }
+
+    // Assunto dinâmico
+    const cliente = document.getElementById("cliente").value || "SemCliente";
+    const tipo = document.querySelector('input[name="tipo"]:checked')?.value || "Registro";
+    const hoje = new Date().toLocaleDateString("pt-BR");
+    const equipamento = document.getElementById("equipamento").value.split("\n")[0] || "-";
+    const assunto = `Registro ${tipo} - Cliente: ${cliente} - Equipamento: ${equipamento} - Data: ${hoje}`;
+    const inputSubject = document.createElement("input");
+    inputSubject.type="hidden";
+    inputSubject.name="_subject";
+    inputSubject.value=assunto;
+    form.appendChild(inputSubject);
+
+    // Cópia para Vinicius
+    const inputCC = document.createElement("input");
+    inputCC.type="hidden";
+    inputCC.name="_cc";
+    inputCC.value="vinicius.germano@supportcare.com.br";
+    form.appendChild(inputCC);
+
+    // Template HTML para renderizar imagens
+    const inputTemplate = document.createElement("input");
+    inputTemplate.type="hidden";
+    inputTemplate.name="_template";
+    inputTemplate.value="html"; 
+    form.appendChild(inputTemplate);
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+</script>
+</body>
+</html>
