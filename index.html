@@ -1,11 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro Coleta e Entrega</title>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body { font-family: Arial,sans-serif; padding:10px; background:#f5f6fa; max-width:800px; margin:0 auto; }
+label { font-weight:bold; display:block; margin-top:10px; }
+input,textarea { width:100%; padding:8px; margin-top:5px; border-radius:5px; border:1px solid #ccc; box-sizing:border-box; }
+textarea { resize:none; height:80px; }
+.signature-box { border:1px solid #ccc; height:120px; border-radius:5px; margin-top:10px; background:white; width:100%; }
+button { margin-top:15px; padding:12px 20px; border:none; border-radius:5px; background:#0A2342; color:white; cursor:pointer; font-weight:bold; width:100%; }
+button:hover { background:#006B3C; }
+.field-group { margin-top:10px; display:flex; flex-wrap:wrap; gap:15px; }
+.field-group label { font-weight:normal; display:flex; align-items:center; margin-right:10px; white-space:nowrap; }
+.field-group label input[type="radio"], .field-group label input[type="checkbox"] { width:auto; margin-right:8px; margin-top:0; }
+fieldset { margin-top:20px; border-radius:5px; border:1px solid #ccc; padding:15px; }
+legend { font-weight:bold; color:#0A2342; padding:0 10px; }
+.form-container { background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+.header { text-align:center; margin-bottom:20px; padding-bottom:15px; border-bottom:2px solid #0A2342; }
+@media (max-width:600px) { body { padding:5px; } .form-container { padding:15px; } textarea { height:60px; } .field-group { gap:10px; } }
+</style>
+</head>
+<body>
+<div class="form-container">
+<div class="header">
+<h2 style="color:#0A2342; margin-bottom:5px;">SUPPORTCARE TECNOLOGIA HOSPITALAR</h2>
+<h3 style="color:#0A2342; margin-top:5px;">REGISTRO DE COLETA E ENTREGA DIGITAL</h3>
+<div id="datetime" style="text-align:right; font-size:12px; color:#006B3C; margin-top:10px;"></div>
+</div>
+
+<label>Cliente:</label>
+<input type="text" id="cliente" placeholder="Nome do Cliente" required>
+
+<label>E-mail do Cliente:</label>
+<input type="email" id="email_cliente" placeholder="cliente@exemplo.com" required>
+
+<label>Equipamento/Fabricante/Modelo/Nº Série:</label>
+<textarea id="equipamento" placeholder="Digite o equipamento" required></textarea>
+
+<fieldset>
+<legend>Inspeção Visual</legend>
+<div class="field-group">
+<label>Danificado?</label>
+<label><input type="radio" name="danificado" value="Sim"> Sim</label>
+<label><input type="radio" name="danificado" value="Não"> Não</label>
+</div>
+<div class="field-group">
+<label>Falta peças?</label>
+<label><input type="radio" name="faltapecas" value="Sim"> Sim</label>
+<label><input type="radio" name="faltapecas" value="Não"> Não</label>
+</div>
+<label>Observações:</label>
+<textarea id="obs_inspecao" placeholder="Observações da inspeção"></textarea>
+</fieldset>
+
+<label>Acessórios:</label>
+<textarea id="acessorios" placeholder="Lista de acessórios"></textarea>
+
+<label>Defeitos relatados pelo cliente:</label>
+<textarea id="defeitos" placeholder="Descreva os defeitos"></textarea>
+
+<label>Observações gerais:</label>
+<textarea id="observacoes" placeholder="Observações gerais"></textarea>
+
+<div class="field-group">
+<label>Status do equipamento:</label>
+<label><input type="radio" name="status" value="Garantia de Venda"> Garantia de Venda</label>
+<label><input type="radio" name="status" value="Garantia de Serviço"> Garantia de Serviço</label>
+<label><input type="radio" name="status" value="Fora de Garantia"> Fora de Garantia</label>
+<label><input type="radio" name="status" value="Não Sabe Informar"> Não sabe informar</label>
+<label><input type="radio" name="status" value="Empréstimo"> Empréstimo</label>
+</div>
+
+<div class="field-group">
+<label>Tipo:</label>
+<label><input type="radio" name="tipo" value="Coleta"> Coleta</label>
+<label><input type="radio" name="tipo" value="Entrega"> Entrega</label>
+</div>
+
+<h4>Assinatura Cliente</h4>
+<canvas id="signature-client" class="signature-box"></canvas>
+<button type="button" onclick="clearSignature('client')">Limpar Assinatura</button>
+
+<h4>Assinatura Funcionário</h4>
+<canvas id="signature-staff" class="signature-box"></canvas>
+<button type="button" onclick="clearSignature('staff')">Limpar Assinatura</button>
+
+<button type="button" onclick="sendEmailWithPDF()">Enviar por E-mail</button>
+</div>
+
 <script>
+document.getElementById("datetime").textContent = "Data/Hora: " + new Date().toLocaleString("pt-BR");
+
+function setupSignatureCanvas(canvasId){
+    const canvas = document.getElementById(canvasId);
+    const signaturePad = new SignaturePad(canvas);
+    const ratio = Math.max(window.devicePixelRatio||1,1);
+    canvas.width = canvas.offsetWidth*ratio;
+    canvas.height = canvas.offsetHeight*ratio;
+    canvas.getContext("2d").scale(ratio,ratio);
+    signaturePad.clear();
+    return signaturePad;
+}
+
+const padClient = setupSignatureCanvas('signature-client');
+const padStaff = setupSignatureCanvas('signature-staff');
+window.addEventListener('resize', function(){
+    padClient.clear(); padStaff.clear();
+    setupSignatureCanvas('signature-client');
+    setupSignatureCanvas('signature-staff');
+});
+function clearSignature(type){ if(type==='client') padClient.clear(); if(type==='staff') padStaff.clear(); }
+
 async function sendEmailWithPDF() {
     const { jsPDF } = window.jspdf;
 
-    // 1️⃣ Coleta dos dados do formulário
+    // 1️⃣ Dados do formulário
     const cliente = document.getElementById("cliente").value || "-";
     const emailCliente = document.getElementById("email_cliente").value;
+    if(!emailCliente){ alert("Digite o e-mail do cliente."); return; }
     const equipamento = document.getElementById("equipamento").value || "-";
     const obsInspecao = document.getElementById("obs_inspecao").value || "-";
     const acessorios = document.getElementById("acessorios").value || "-";
@@ -15,8 +131,8 @@ async function sendEmailWithPDF() {
     const faltapecas = document.querySelector('input[name="faltapecas"]:checked')?.value || "-";
     const status = document.querySelector('input[name="status"]:checked')?.value || "-";
     const tipo = document.querySelector('input[name="tipo"]:checked')?.value || "-";
-    
-    // 2️⃣ Cria o PDF
+
+    // 2️⃣ Cria PDF
     const pdf = new jsPDF();
     pdf.setFontSize(12);
     pdf.text("SUPPORTCARE TECNOLOGIA HOSPITALAR", 10, 10);
@@ -39,11 +155,9 @@ async function sendEmailWithPDF() {
     pdf.text("Observações gerais:", 10, 132);
     pdf.text(observacoes, 10, 140);
 
-    // 3️⃣ Adiciona assinaturas
-    const padClientCanvas = document.getElementById("signature-client");
-    const padStaffCanvas = document.getElementById("signature-staff");
-    const clientDataUrl = padClientCanvas.toDataURL();
-    const staffDataUrl = padStaffCanvas.toDataURL();
+    // 3️⃣ Assinaturas
+    const clientDataUrl = padClient.toDataURL();
+    const staffDataUrl = padStaff.toDataURL();
 
     pdf.addPage();
     pdf.text("Assinaturas", 10, 10);
@@ -56,7 +170,7 @@ async function sendEmailWithPDF() {
     const pdfBlob = pdf.output('blob');
     const file = new File([pdfBlob], `Registro_${cliente}.pdf`, { type: 'application/pdf' });
 
-    // 5️⃣ Tenta usar navigator.share (melhor experiência no celular)
+    // 5️⃣ Tenta usar navigator.share (celulares modernos)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
             await navigator.share({
@@ -70,13 +184,12 @@ async function sendEmailWithPDF() {
         return;
     }
 
-    // 6️⃣ Caso não seja suportado, abre mailto com download manual
+    // 6️⃣ Se não suportar, abre mailto com link para download do PDF
     const pdfURL = URL.createObjectURL(file);
     const subject = encodeURIComponent(`Registro ${tipo} - Cliente: ${cliente} - Equipamento: ${equipamento}`);
     const body = encodeURIComponent(`Olá,\n\nSegue o registro de ${tipo} do cliente ${cliente}.\n\n[O PDF gerado está disponível para download neste link:] ${pdfURL}\n\nAtenciosamente,\nSupportcare`);
     window.location.href = `mailto:${emailCliente}?subject=${subject}&body=${body}`;
 }
 </script>
-
-<!-- Substitua o botão Enviar -->
-<button type="button" onclick="sendEmailWithPDF()">Enviar por E-mail</button>
+</body>
+</html>
